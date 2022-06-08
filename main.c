@@ -6,7 +6,7 @@
 /*   By: rkaufman <rkaufman@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2022/06/08 18:25:18 by rkaufman          #+#    #+#             */
-/*   Updated: 2022/06/08 20:46:21 by rkaufman         ###   ########.fr       */
+/*   Updated: 2022/06/08 21:22:59 by rkaufman         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,25 +14,40 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <stdio.h>
-#define	READ 0
-#define	WRITE 1
 
-void	ft_write_fd(char *s);
-void	ft_write_fd_nl(char *s);
-void	ft_close(int *fd);
+int	ft_strlen(char *s)
+{
+	int i = 0;
+	while (s[i])
+	{
+		i++;
+	}
+	return (i);
+}
+
+void	ft_write_fd(char *s)
+{
+	write(STDERR_FILENO, s, ft_strlen(s));
+}
+
+void	ft_write_fd_nl(char *s)
+{
+	ft_write_fd(s);
+	write(STDERR_FILENO, "\n", 1);
+}
+
+void	ft_close(int *fd)
+{
+	if (*fd != -1)
+		close(*fd);
+	*fd = -1;
+}
 
 int	main(int argc, char **argv, char **envp)
 {
 	if (argc < 2)
 		return (0);
-
-	int i = 0;
-	int	cmd = 1;
-	int	fd_in[2] = {-1, -1};
-	int	fd_out[2] = {-1, -1};
-	int	pid;
-
+	int i = 0, cmd = 1, pid = 0, fd_in[2] = {-1, -1}, fd_out[2] = {-1, -1};
 	while(argv[i])
 	{
 		i++;
@@ -61,11 +76,6 @@ int	main(int argc, char **argv, char **envp)
 			{
 				if (argv[i][0] == '|')
 				{
-					if (fd_out[0] != -1)
-					{
-						fd_in[0] = fd_out[0];
-						fd_in[1] = fd_out[1];
-					}
 					if (pipe(fd_out) == -1)
 						ft_write_fd("error: fatal\n");
 					break;
@@ -77,7 +87,7 @@ int	main(int argc, char **argv, char **envp)
 			pid = fork();
 			if (pid == 0)
 			{
-				if (fd_out[0] != -1)
+				if (fd_out[1] != -1)
 				{
 					close(fd_out[0]);
 					dup2(fd_out[1], STDOUT_FILENO);
@@ -99,46 +109,15 @@ int	main(int argc, char **argv, char **envp)
 			}
 			else if (pid == -1)
 				ft_write_fd("error: fatal\n");
-			else
-			{
-				ft_close(&fd_in[0]);
-				ft_close(&fd_in[1]);
-				fd_in[0] = fd_out[0];
-				fd_in[1] = fd_out[1];
-				fd_out[0] = -1;
-				fd_out[1] = -1;
+			ft_close(&fd_in[0]);
+			ft_close(&fd_in[1]);
+			fd_in[0] = fd_out[0];
+			fd_in[1] = fd_out[1];
+			fd_out[0] = -1;
+			fd_out[1] = -1;
+			if (pid > 0)
 				waitpid(pid, NULL, WUNTRACED);
-			}
 		}
 	}
 	return (0);
-}
-
-int	ft_strlen(char *s)
-{
-	int i = 0;
-	while (*s)
-	{
-		s++;
-		i++;
-	}
-	return (i);
-}
-
-void	ft_write_fd(char *s)
-{
-	write(STDERR_FILENO, s, ft_strlen(s));
-}
-
-void	ft_write_fd_nl(char *s)
-{
-	ft_write_fd(s);
-	write(2, "\n", 1);
-}
-
-void	ft_close(int *fd)
-{
-	if (*fd != -1)
-		close(*fd);
-	*fd = -1;
 }
